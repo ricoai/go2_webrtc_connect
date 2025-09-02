@@ -1,5 +1,12 @@
 import cv2
 import numpy as np
+import supervision as sv
+from inference_sdk import InferenceHTTPClient
+from PIL import Image
+import os
+from time import time
+
+INFER_TIME = 10
 
 # Create an OpenCV window and display a blank image
 height, width = 720, 1280  # Adjust the size as needed
@@ -28,13 +35,64 @@ def main():
     # conn = Go2WebRTCConnection(WebRTCConnectionMethod.Remote, serialNumber="B42D2000XXXXXXXX", username="email@gmail.com", password="pass")
     # conn = Go2WebRTCConnection(WebRTCConnectionMethod.LocalAP)
 
+    #model = get_model("rfdetr-base")
+    
+    # Start Inference server
+    # inference server start --dev
+    CLIENT = InferenceHTTPClient(
+    api_url="http://localhost:9001",
+    #api_key=os.environ.get("ROBOFLOW_API_KEY")
+    )
+
     # Async function to receive video frames and put them in the queue
     async def recv_camera_stream(track: MediaStreamTrack):
+        infer_state = 0
+        detections = []
+        labels = []
+        
         while True:
             frame = await track.recv()
-            # Convert the frame to a NumPy array
-            img = frame.to_ndarray(format="bgr24")
-            frame_queue.put(img)
+            # Convert the frame to RGB format (better acceleration)
+            img_rgb = frame.to_ndarray(format="rgb24")
+            
+            # Convert to PIL Image for inference
+            pil_image = Image.fromarray(img_rgb)
+            
+            infer_state += 1
+            if infer_state == INFER_TIME:
+                # Run inference with PIL Image
+                try:
+                    predictions = CLIENT.infer(pil_image, model_id="rfdetr-base")
+                except Exception as e:
+                    logging.error(f"Inference error: {e}")
+                    continue
+                
+                # Convert RGB to BGR for OpenCV display
+                img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+
+                detections = sv.Detections.from_inference(predictions)
+
+                labels = [prediction['class'] for prediction in predictions['predictions']]
+
+                annotated_image = img.copy()
+                annotated_image = sv.BoxAnnotator(color=sv.ColorPalette.ROBOFLOW).annotate(annotated_image, detections)
+                annotated_image = sv.LabelAnnotator(color=sv.ColorPalette.ROBOFLOW).annotate(annotated_image, detections, labels)
+                
+                #frame_queue.put(img)
+                frame_queue.put(annotated_image)
+                infer_state = 0
+                
+            else:
+                # Convert RGB to BGR for OpenCV display
+                img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+                
+                annotated_image = img.copy()
+                if len(detections) > 0:
+                    annotated_image = sv.BoxAnnotator(color=sv.ColorPalette.ROBOFLOW).annotate(annotated_image, detections)
+                    annotated_image = sv.LabelAnnotator(color=sv.ColorPalette.ROBOFLOW).annotate(annotated_image, detections, labels)
+                
+                #frame_queue.put(img)
+                frame_queue.put(annotated_image)
 
     def run_asyncio_loop(loop):
         asyncio.set_event_loop(loop)
@@ -66,7 +124,7 @@ def main():
         while True:
             if not frame_queue.empty():
                 img = frame_queue.get()
-                print(f"Shape: {img.shape}, Dimensions: {img.ndim}, Type: {img.dtype}, Size: {img.size}")
+                #print(f"Shape: {img.shape}, Dimensions: {img.ndim}, Type: {img.dtype}, Size: {img.size}")
                 # Display the frame
                 cv2.imshow('Video', img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):

@@ -25,7 +25,7 @@ csv.field_size_limit(sys.maxsize)
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')
 
-logging.basicConfig(level=logging.FATAL)
+logging.basicConfig(level=logging.ERROR)
 
 # Constants to enable/disable features
 ENABLE_POINT_CLOUD = True
@@ -130,7 +130,8 @@ async def lidar_webrtc_connection():
 
     while retry_attempts < MAX_RETRY_ATTEMPTS:
         try:
-            conn = Go2WebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.8.181")  # WebRTC IP
+            #conn = Go2WebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.8.181")  # WebRTC IP
+            conn = Go2WebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="10.20.30.30")  # WebRTC IP
             # _webrtc_connection = Go2WebRTCConnection(WebRTCConnectionMethod.Remote, serialNumber="B42D2000XXXXXXXX", username="email@gmail.com", password="pass")
             # _webrtc_connection = Go2WebRTCConnection(WebRTCConnectionMethod.LocalAP)
 

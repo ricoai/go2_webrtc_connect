@@ -26,3 +26,6 @@ output.wav
 output_video.mp4
 
 build/
+
+CLAUDE.md
+*.csv
