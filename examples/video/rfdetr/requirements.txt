@@ -1,0 +1,3 @@
+rfdetr
+inference-sdk
+inference-cli

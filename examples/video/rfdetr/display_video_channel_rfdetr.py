@@ -23,7 +23,7 @@ from go2_webrtc_driver.webrtc_driver import Go2WebRTCConnection, WebRTCConnectio
 from aiortc import MediaStreamTrack
 
 # Enable logging for debugging
-logging.basicConfig(level=logging.FATAL)
+logging.basicConfig(level=logging.DEBUG)
 
 def main():
     frame_queue = Queue()
